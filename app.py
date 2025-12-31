@@ -8,7 +8,6 @@ from search_engine import SearchEngine
 from routes.auth import auth_bp
 from routes.payment import payment_bp
 from routes.search import search_bp
-from routes.admin import admin_bp
 
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
@@ -22,16 +21,11 @@ SearchEngine.load_data()
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(payment_bp, url_prefix='/api/payment')
 app.register_blueprint(search_bp, url_prefix='/api')
-app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
 # Rutas estáticas
 @app.route('/')
 def home():
     return send_from_directory(app.static_folder, 'index.html')
-
-@app.route('/admin')
-def admin_panel():
-    return send_from_directory(app.static_folder, 'admin.html')
 
 @app.route('/payment-success')
 def payment_success():
