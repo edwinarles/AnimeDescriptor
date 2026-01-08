@@ -32,7 +32,7 @@ def get_paypal_access_token():
         paypal_token_cache['expires_at'] = datetime.now() + timedelta(seconds=expires_in)
         return paypal_token_cache['token']
     except Exception as e:
-        print(f"❌ Error token PayPal: {e}")
+        print(f"❌ PayPal token error: {e}")
         return None
 
 def create_paypal_order(amount, user_id, return_url_base):
@@ -72,7 +72,7 @@ def create_paypal_order(amount, user_id, return_url_base):
 def capture_paypal_order(order_id):
     access_token = get_paypal_access_token()
     if not access_token: 
-        print("❌ No se pudo obtener access token de PayPal")
+        print("❌ Could not obtain PayPal access token")
         return None
     
     url = f"{Config.PAYPAL_API}/v2/checkout/orders/{order_id}/capture"
@@ -82,23 +82,23 @@ def capture_paypal_order(order_id):
     }
     
     try:
-        print(f"📡 Capturando orden en PayPal: {order_id}")
+        print(f"📡 Capturing PayPal order: {order_id}")
         response = requests.post(url, headers=headers, timeout=15)
-        print(f"📡 Status de respuesta PayPal: {response.status_code}")
+        print(f"📡 PayPal response status: {response.status_code}")
         
         if response.status_code in [200, 201]:
             result = response.json()
-            print(f"✅ Captura exitosa: {result.get('status')}")
+            print(f"✅ Successful capture: {result.get('status')}")
             return result
         else:
             error_data = response.text
-            print(f"❌ Error en captura PayPal (status {response.status_code}): {error_data}")
-            # Si ya fue capturado, intentar obtener detalles
+            print(f"❌ PayPal capture error (status {response.status_code}): {error_data}")
+            # If already captured, try to get details
             if response.status_code == 422:
-                print("⚠️ Orden posiblemente ya capturada")
+                print("⚠️ Order possibly already captured")
             return None
     except Exception as e:
         import traceback
-        print(f"❌ Excepción capturando orden: {e}")
+        print(f"❌ Exception capturing order: {e}")
         print(f"❌ Traceback: {traceback.format_exc()}")
         return None

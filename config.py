@@ -1,19 +1,19 @@
 import os
 from dotenv import load_dotenv
 
-# Cargar variables (.env debe estar en la raíz)
+# Load environment variables (.env must be in the root directory)
 load_dotenv()
 
 class Config:
-    # Aplicación
+    # Application
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev_key_secret')
     PORT = int(os.environ.get('PORT', 5000))
     ENV = os.environ.get('FLASK_ENV', 'production')
     
     # MongoDB Atlas
-    # Formato de MONGO_URI para Atlas:
-    # mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/<nombre_db>?retryWrites=true&w=majority
-    # Ejemplo: mongodb+srv://usuario:password123@cluster0.xxxxx.mongodb.net/AnimeDescriptor?retryWrites=true&w=majority
+    # MONGO_URI format for Atlas:
+    # mongodb+srv://<user>:<password>@<cluster>.mongodb.net/<db_name>?retryWrites=true&w=majority
+    # Example: mongodb+srv://user:password123@cluster0.xxxxx.mongodb.net/AnimeDescriptor?retryWrites=true&w=majority
     MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://localhost:27017/AnimeDescriptor')
     DB_NAME = os.environ.get('DB_NAME', 'AnimeDescriptor')
     
@@ -39,6 +39,6 @@ class Config:
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
     GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 
-    # Límites
-    FREE_DAILY_LIMIT = 10
-    PREMIUM_DAILY_LIMIT = 500
+    # Search Limits (per hour)
+    FREE_HOURLY_LIMIT = 10
+    PREMIUM_HOURLY_LIMIT = 200

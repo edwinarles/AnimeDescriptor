@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>¡Pago Exitoso! - OtakuDescriptor</title>
+    <title>Payment Successful! - OtakuDescriptor</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="payment-styles.css">
     <style>
@@ -181,51 +181,51 @@
         <div class="success-content">
             <div id="processing-state" style="display: block;">
                 <div class="spinner"></div>
-                <h1>Procesando tu pago...</h1>
-                <p>Por favor espera mientras confirmamos tu pago con PayPal</p>
+                <h1>Processing your payment...</h1>
+                <p>Please wait while we confirm your payment with PayPal</p>
                 <div class="processing-message">
-                    ⏳ Esto puede tomar unos segundos
+                    ⏳ This may take a few seconds
                 </div>
             </div>
 
             <div id="success-state" style="display: none;">
                 <div class="success-icon">✓</div>
-                <h1>¡Pago Exitoso!</h1>
-                <p>Tu cuenta ha sido actualizada a Premium</p>
+                <h1>Payment Successful!</h1>
+                <p>Your account has been upgraded to Premium</p>
 
                 <div class="premium-badge">
-                    💎 Premium Activado
+                    💎 Premium Activated
                 </div>
 
                 <div class="benefits-list">
-                    <h3 style="color: white; margin-bottom: 15px;">Ahora disfrutas de:</h3>
+                    <h3 style="color: white; margin-bottom: 15px;">You now enjoy:</h3>
                     <ul>
-                        <li>1,000 búsquedas diarias</li>
-                        <li>Acceso prioritario al servidor</li>
-                        <li>Sin anuncios</li>
-                        <li>Soporte premium</li>
+                        <li>1,000 daily searches</li>
+                        <li>Priority server access</li>
+                        <li>No ads</li>
+                        <li>Premium support</li>
                     </ul>
                 </div>
 
                 <p style="color: #888; font-size: 14px; margin-top: 20px;">
-                    Tu suscripción premium es válida por 30 días
+                    Your premium subscription is valid for 30 days
                 </p>
 
-                <a href="/" class="btn-home">Comenzar a Buscar</a>
+                <a href="/" class="btn-home">Start Searching</a>
             </div>
         </div>
     </div>
 
     <script src="funcionamiento.js"></script>
     <script>
-        // Variable para evitar múltiples llamadas
+        // Variable to prevent multiple calls
         let processingPayment = false;
 
-        // Procesar el pago automáticamente
+        // Process payment automatically
         async function procesarPago() {
-            // Prevenir múltiples ejecuciones
+            // Prevent multiple executions
             if (processingPayment) {
-                console.log('⚠️ Ya hay un pago en proceso');
+                console.log('⚠️ Payment already in process');
                 return;
             }
             processingPayment = true;
@@ -238,22 +238,22 @@
             console.log('🔍 Token (Order ID):', orderId);
 
             if (!orderId) {
-                console.error('❌ Falta el token de la orden');
+                console.error('❌ Missing order token');
                 document.getElementById('processing-state').style.display = 'none';
                 document.getElementById('success-state').innerHTML = `
                     <div class="success-icon" style="background: linear-gradient(135deg, #f44336 0%, #e57373 100%);">✕</div>
-                    <h1>Error en el Pago</h1>
-                    <p>No se encontró la información del pago. Por favor, intenta de nuevo.</p>
-                    <a href="/" class="btn-home">Volver al Inicio</a>
+                    <h1>Payment Error</h1>
+                    <p>Payment information not found. Please try again.</p>
+                    <a href="/" class="btn-home">Back to Home</a>
                 `;
                 document.getElementById('success-state').style.display = 'block';
                 return;
             }
 
             try {
-                console.log('📡 Capturando pago...');
+                console.log('📡 Capturing payment...');
 
-                // Capturar el pago
+                // Capture payment
                 const response = await fetch('/api/payment/capture-order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -265,30 +265,30 @@
                 console.log('📡 Result:', result);
 
                 if (response.ok && result.status === 'success') {
-                    // Limpiar orden guardada
+                    // Clear saved order
                     localStorage.removeItem('paypal_order_id');
 
-                    console.log('✅ Pago completado exitosamente');
+                    console.log('✅ Payment completed successfully');
 
-                    // Mostrar éxito
+                    // Show success
                     setTimeout(() => {
                         document.getElementById('processing-state').style.display = 'none';
                         document.getElementById('success-state').style.display = 'block';
                     }, 1000);
                 } else {
-                    throw new Error(result.error || 'Pago no completado');
+                    throw new Error(result.error || 'Payment not completed');
                 }
             } catch (error) {
                 console.error('❌ Error:', error);
                 document.getElementById('processing-state').style.display = 'none';
                 document.getElementById('success-state').innerHTML = `
                     <div class="success-icon" style="background: linear-gradient(135deg, #f44336 0%, #e57373 100%);">✕</div>
-                    <h1>Error al Procesar</h1>
-                    <p>${error.message || 'Hubo un problema al confirmar tu pago'}</p>
+                    <h1>Processing Error</h1>
+                    <p>${error.message || 'There was a problem confirming your payment'}</p>
                     <p style="font-size: 14px; color: #888; margin-top: 15px;">
-                        Si el dinero fue debitado, contacta con soporte con este ID: ${orderId}
+                        If the money was debited, contact support with this ID: ${orderId}
                     </p>
-                    <a href="/" class="btn-home">Volver al Inicio</a>
+                    <a href="/" class="btn-home">Back to Home</a>
                 `;
                 document.getElementById('success-state').style.display = 'block';
             } finally {
@@ -296,9 +296,9 @@
             }
         }
 
-        // Ejecutar al cargar la página - UNA SOLA VEZ
+        // Execute when page loads - ONCE
         window.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 Página cargada, procesando pago...');
+            console.log('🚀 Page loaded, processing payment...');
             procesarPago();
         });
     </script>

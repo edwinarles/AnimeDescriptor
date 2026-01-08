@@ -12,12 +12,12 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """Registro tradicional (Email/Key) o Login 'Magic Link' simple"""
+    """Traditional registration (Email/Key) or simple 'Magic Link' login"""
     data = request.get_json()
     email = data.get('email')
     
     if not email:
-        # Anónimo
+        # Anonymous user
         new_key = generate_api_key()
         try:
             db.db.users.insert_one({
@@ -29,14 +29,14 @@ def register():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
-    # Verificar si existe
+    # Check if user exists
     user = db.db.users.find_one({'email': email})
     if user:
-        # Magic Link Login solicitado para usuario existente
+        # Magic Link login requested for existing user
         send_login_email(email, user['api_key'], request.host_url)
         return jsonify({'message': 'Magic link sent', 'require_email_check': True})
     
-    # Nuevo Usuario por Email (Magic Link Flow por defecto)
+    # New user via email (Magic Link flow by default)
     new_key = generate_api_key()
     db.db.users.insert_one({
         'email': email,
@@ -50,7 +50,7 @@ def register():
 
 @auth_bp.route('/register-password', methods=['POST'])
 def register_password():
-    """Registro con contraseña - cuenta creada SOLO después de verificar email"""
+    """Password registration - account created ONLY after email verification"""
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
@@ -58,17 +58,17 @@ def register_password():
     if not email or not password:
         return jsonify({'error': 'Email and password required'}), 400
     
-    # Verificar si el email ya tiene una cuenta ACTIVA
+    # Check if email already has an ACTIVE account
     existing_user = db.db.users.find_one({'email': email})
     if existing_user:
-        print(f"⚠️ Intento de registro con email existente: {email}")
+        print(f"⚠️ Registration attempt with existing email: {email}")
         return jsonify({'error': 'Email already registered'}), 409
     
-    # Verificar si ya hay un registro pendiente
+    # Check if there's already a pending registration
     pending = db.db.pending_registrations.find_one({'email': email})
     if pending:
-        # Ya existe un registro pendiente, enviar email nuevamente
-        print(f"⚠️ Registro pendiente existente para: {email}, reenviando email")
+        # Pending registration already exists, resend email
+        print(f"⚠️ Existing pending registration for: {email}, resending email")
         from services.email_service import send_verification_email
         send_verification_email(email, pending['verification_token'], request.host_url)
         return jsonify({
@@ -76,12 +76,12 @@ def register_password():
             'require_email_verification': True
         }), 200
         
-    # Generar token de verificación y hash de contraseña
+    # Generate verification token and password hash
     hashed = generate_password_hash(password)
     verification_token = secrets.token_urlsafe(32)
     
-    # Guardar en colección TEMPORAL de registros pendientes
-    # NO se crea el usuario todavía
+    # Save to TEMPORARY pending registrations collection
+    # User is NOT created yet
     db.db.pending_registrations.insert_one({
         'email': email,
         'password_hash': hashed,
@@ -90,20 +90,20 @@ def register_password():
         'created_at': datetime.now()
     })
     
-    # Enviar email de verificación
+    # Send verification email
     from services.email_service import send_verification_email
     email_sent = send_verification_email(email, verification_token, request.host_url)
     
     if email_sent:
-        print(f"✅ Registro pendiente creado: {email}")
+        print(f"✅ Pending registration created: {email}")
         return jsonify({
             'message': 'Registration initiated. Please check your email to complete registration.',
             'require_email_verification': True
         }), 201
     else:
-        # Si falla el email, eliminar el registro pendiente
+        # If email fails, remove pending registration
         db.db.pending_registrations.delete_one({'email': email})
-        print(f"⚠️ Email de verificación falló, registro pendiente eliminado: {email}")
+        print(f"⚠️ Verification email failed, pending registration removed: {email}")
         return jsonify({
             'error': 'Failed to send verification email. Please try again later.'
         }), 500
@@ -111,7 +111,7 @@ def register_password():
 
 @auth_bp.route('/login-password', methods=['POST'])
 def login_password():
-    """Login con contraseña"""
+    """Password login"""
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
@@ -132,41 +132,41 @@ def login_password():
 
 @auth_bp.route('/verify-email', methods=['GET'])
 def verify_email():
-    """Verificar email con token y CREAR la cuenta"""
+    """Verify email with token and CREATE the account"""
     token = request.args.get('token')
     
     if not token:
         return jsonify({'error': 'Verification token required'}), 400
     
-    # Buscar en registros PENDIENTES
+    # Search in PENDING registrations
     pending_user = db.db.pending_registrations.find_one({'verification_token': token})
     
     if not pending_user:
         return jsonify({'error': 'Invalid verification token'}), 404
     
-    # Verificar que el token no haya expirado
+    # Verify token hasn't expired
     if pending_user.get('token_expires') and datetime.now() > pending_user['token_expires']:
-        # Eliminar registro pendiente expirado
+        # Remove expired pending registration
         db.db.pending_registrations.delete_one({'_id': pending_user['_id']})
         return jsonify({'error': 'Verification token has expired. Please register again.'}), 410
     
-    # CREAR el usuario AHORA (antes no existía)
+    # CREATE the user NOW (didn't exist before)
     new_key = generate_api_key()
     db.db.users.insert_one({
         'email': pending_user['email'],
         'password_hash': pending_user['password_hash'],
         'api_key': new_key,
         'is_premium': False,
-        'email_verified': True,  # Ya verificado
+        'email_verified': True,  # Already verified
         'created_at': datetime.now()
     })
     
-    # Eliminar de registros pendientes
+    # Remove from pending registrations
     db.db.pending_registrations.delete_one({'_id': pending_user['_id']})
     
-    print(f"✅ Cuenta creada y email verificado para: {pending_user.get('email')}")
+    print(f"✅ Account created and email verified for: {pending_user.get('email')}")
     
-    # Redirigir a la página principal con API key para auto-login
+    # Redirect to main page with API key for auto-login
     from flask import redirect
     return redirect(f"/?api_key={new_key}&verified=true")
 
@@ -179,28 +179,53 @@ def auth_status():
     user = db.db.users.find_one({'api_key': api_key})
     if not user: return jsonify({'error': 'Invalid API key'}), 401
     
-    # Verificar Expiración Premium
+    # Check premium expiration
     is_premium = user.get('is_premium', False)
     if is_premium and user.get('premium_until'):
         if datetime.now() > user['premium_until']:
             db.db.users.update_one({'_id': user['_id']}, {'$set': {'is_premium': False}})
             is_premium = False
             
-    # Contar Búsquedas
-    yesterday = datetime.now() - timedelta(days=1)
-    # Asumiendo que la colección searches tiene 'user_id' referenciando user._id o api_key
-    # Usando API Key por simplicidad en el registro de búsquedas
+    # Count searches in the last hour
+    one_hour_ago = datetime.now() - timedelta(hours=1)
+    # Assuming searches collection has 'user_id' referencing user._id or api_key
+    # Using API Key for simplicity in search logging
     count = db.db.searches.count_documents({
         'api_key': api_key,
-        'timestamp': {'$gt': yesterday}
+        'timestamp': {'$gt': one_hour_ago}
     })
     
-    limit = Config.PREMIUM_DAILY_LIMIT if is_premium else Config.FREE_DAILY_LIMIT
+    limit = Config.PREMIUM_HOURLY_LIMIT if is_premium else Config.FREE_HOURLY_LIMIT
     
     return jsonify({
         'is_premium': is_premium,
         'premium_until': user.get('premium_until'),
-        'daily_searches': count,
-        'daily_limit': limit,
+        'hourly_searches': count,
+        'hourly_limit': limit,
+        'remaining': max(0, limit - count)
+    })
+
+@auth_bp.route('/anonymous-status', methods=['GET'])
+def anonymous_status():
+    """Get search status for anonymous users based on session"""
+    import hashlib
+    
+    # Create session ID based on IP and user-agent (same as search endpoint)
+    session_data = f"{request.remote_addr}:{request.headers.get('User-Agent', '')}"
+    session_id = hashlib.sha256(session_data.encode()).hexdigest()
+    
+    # Count anonymous searches in the last hour
+    one_hour_ago = datetime.now() - timedelta(hours=1)
+    count = db.db.anonymous_searches.count_documents({
+        'session_id': session_id,
+        'timestamp': {'$gt': one_hour_ago}
+    })
+    
+    limit = 10  # Anonymous limit
+    
+    return jsonify({
+        'is_anonymous': True,
+        'hourly_searches': count,
+        'hourly_limit': limit,
         'remaining': max(0, limit - count)
     })

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalles del Anime - OtakuSearch</title>
+    <title>Anime Details - OtakuSearch</title>
     <style>
         * {
             box-sizing: border-box;
@@ -199,10 +199,10 @@
 
 <body>
     <div class="container">
-        <button class="back-button" onclick="volver()">← Back to results</button>
+        <button class="back-button" onclick="goBack()">← Back to results</button>
 
         <div id="errorContainer" class="error-message" style="display: none;">
-            ❌ No se pudieron cargar los detalles del anime.
+            ❌ Could not load anime details.
         </div>
 
         <div id="detailContainer" class="detail-card" style="display: none;">
@@ -212,7 +212,7 @@
                 <div class="header">
                     <img id="cover" class="cover" src="" alt="Cover">
                     <div class="info">
-                        <h1 id="title">Charging...</h1>
+                        <h1 id="title">Loading...</h1>
                         <div class="titles">
                             <div id="titleRomaji"></div>
                             <div id="titleNative"></div>
@@ -246,45 +246,45 @@
     </div>
 
     <script>
-        function volver() {
+        function goBack() {
             window.history.back();
         }
 
-        function limpiarHTML(html) {
-            if (!html) return 'No hay descripción disponible.';
+        function cleanHTML(html) {
+            if (!html) return 'No description available.';
             return html
                 .replace(/<br\s*\/?>/gi, '<br><br>')
                 .replace(/\r\n/g, '<br><br>');
         }
 
-        function cargarDetalles() {
+        function loadDetails() {
             try {
                 const animeData = localStorage.getItem('animeSeleccionado');
 
                 if (!animeData) {
-                    mostrarError();
+                    showError();
                     return;
                 }
 
                 const anime = JSON.parse(animeData);
-                console.log('Anime cargado:', anime);
+                console.log('Anime loaded:', anime);
 
-                // Mostrar el contenedor
+                // Show container
                 document.getElementById('detailContainer').style.display = 'block';
 
-                // Imágenes
+                // Images
                 if (anime.banner_image) {
                     document.getElementById('banner').src = anime.banner_image;
                 }
-                document.getElementById('cover').src = anime.cover_image || 'https://via.placeholder.com/200x300?text=Sin+Imagen';
+                document.getElementById('cover').src = anime.cover_image || 'https://via.placeholder.com/200x300?text=No+Image';
                 document.getElementById('cover').onerror = function () {
-                    this.src = 'https://via.placeholder.com/200x300?text=Sin+Imagen';
+                    this.src = 'https://via.placeholder.com/200x300?text=No+Image';
                 };
 
-                // Título principal
-                document.getElementById('title').textContent = anime.main_title || 'Sin título';
+                // Main title
+                document.getElementById('title').textContent = anime.main_title || 'No title';
 
-                // Títulos alternativos
+                // Alternative titles
                 if (anime.title) {
                     if (anime.title.romaji) {
                         document.getElementById('titleRomaji').textContent = `📝 ${anime.title.romaji}`;
@@ -301,7 +301,7 @@
                 const metaHTML = [];
                 if (anime.year) metaHTML.push(`<div class="meta-item">📅 ${anime.year}</div>`);
                 if (anime.season) metaHTML.push(`<div class="meta-item">🌸 ${anime.season}</div>`);
-                if (anime.episodes) metaHTML.push(`<div class="meta-item">📺 ${anime.episodes} episodios</div>`);
+                if (anime.episodes) metaHTML.push(`<div class="meta-item">📺 ${anime.episodes} episodes</div>`);
                 if (anime.duration) metaHTML.push(`<div class="meta-item">⏱️ ${anime.duration} min</div>`);
                 if (anime.format) metaHTML.push(`<div class="meta-item">📱 ${anime.format}</div>`);
                 if (anime.status) metaHTML.push(`<div class="meta-item">🎬 ${anime.status}</div>`);
@@ -310,11 +310,11 @@
                 }
                 document.getElementById('metaContainer').innerHTML = metaHTML.join('');
 
-                // Descripción (solo usa anime.description)
-                const desc = anime.description || 'No hay descripción disponible.';
-                document.getElementById('description').innerHTML = limpiarHTML(desc);
+                // Description (only uses anime.description)
+                const desc = anime.description || 'No description available.';
+                document.getElementById('description').innerHTML = cleanHTML(desc);
 
-                // Géneros
+                // Genres
                 if (anime.genres && anime.genres.length > 0) {
                     document.getElementById('genresSection').style.display = 'block';
                     document.getElementById('genres').innerHTML = anime.genres
@@ -330,23 +330,23 @@
                         .join('');
                 }
 
-                // Estadísticas
+                // Statistics
                 if (anime.popularity || anime.favourites) {
                     document.getElementById('statsSection').style.display = 'block';
                     const statsHTML = [];
-                    if (anime.popularity) statsHTML.push(`<div class="meta-item">👥 ${anime.popularity.toLocaleString()} usuarios</div>`);
-                    if (anime.favourites) statsHTML.push(`<div class="meta-item">❤️ ${anime.favourites.toLocaleString()} favoritos</div>`);
+                    if (anime.popularity) statsHTML.push(`<div class="meta-item">👥 ${anime.popularity.toLocaleString()} users</div>`);
+                    if (anime.favourites) statsHTML.push(`<div class="meta-item">❤️ ${anime.favourites.toLocaleString()} favorites</div>`);
                     document.getElementById('statsContainer').innerHTML = statsHTML.join('');
                 }
 
             } catch (error) {
-                console.error('Error al cargar detalles:', error);
-                mostrarError();
+                console.error('Error loading details:', error);
+                showError();
             }
         }
-        window.cargarDetalles = cargarDetalles;
+        window.loadDetails = loadDetails;
 
-        function mostrarError() {
+        function showError() {
             document.getElementById('errorContainer').style.display = 'block';
             document.getElementById('detailContainer').style.display = 'none';
             setTimeout(() => {
@@ -354,8 +354,8 @@
             }, 3000);
         }
 
-        // Cargar los detalles al cargar la página
-        window.addEventListener('DOMContentLoaded', cargarDetalles);
+        // Load details when page loads
+        window.addEventListener('DOMContentLoaded', loadDetails);
     </script>
 </body>
 

@@ -16,50 +16,55 @@ client = OpenAI(api_key=Config.OPENAI_API_KEY)
 def search_semantic():
     api_key = request.headers.get('X-API-Key')
     
-    # Soporte para usuarios anónimos O API key inválida
+    # Support for anonymous users OR invalid API key
     if not api_key:
-        # Crear identificador de sesión basado en IP y user-agent
+        # Create session ID based on IP and user-agent
         session_data = f"{request.remote_addr}:{request.headers.get('User-Agent', '')}"
         session_id = hashlib.sha256(session_data.encode()).hexdigest()
         
-        # Contar búsquedas anónimas (sin límite de tiempo - 10 búsquedas en total)
+        # Count anonymous searches in the last hour (changed from permanent)
+        one_hour_ago = datetime.now() - timedelta(hours=1)
         anonymous_count = db.db.anonymous_searches.count_documents({
-            'session_id': session_id
+            'session_id': session_id,
+            'timestamp': {'$gt': one_hour_ago}
         })
         
         if anonymous_count >= 10:
             return jsonify({
                 'error': 'Anonymous limit reached',
-                'message': 'Has usado tus 10 búsquedas gratuitas. Regístrate para comprar Premium y obtener búsquedas ilimitadas.',
+                'message': 'You have used your 10 free searches this hour. Register to get more or wait for the hourly refresh.',
                 'limit': 10,
                 'used': anonymous_count,
                 'is_anonymous': True,
                 'require_register': True
             }), 429
         
-        # Continuar con búsqueda anónima
+        # Continue with anonymous search
         is_premium = False
         limit = 10
         count = anonymous_count
         search_key = session_id
         is_anonymous = True
     else:
-        # Usuario registrado - verificar si la API key es válida
+        # Registered user - verify if API key is valid
         user = db.db.users.find_one({'api_key': api_key})
         
-        # Si la API key es inválida, tratar como usuario anónimo en lugar de devolver error
+        # If API key is invalid, treat as anonymous user instead of returning error
         if not user:
             session_data = f"{request.remote_addr}:{request.headers.get('User-Agent', '')}"
             session_id = hashlib.sha256(session_data.encode()).hexdigest()
             
+            # Count anonymous searches in the last hour
+            one_hour_ago = datetime.now() - timedelta(hours=1)
             anonymous_count = db.db.anonymous_searches.count_documents({
-                'session_id': session_id
+                'session_id': session_id,
+                'timestamp': {'$gt': one_hour_ago}
             })
             
             if anonymous_count >= 10:
                 return jsonify({
                     'error': 'Anonymous limit reached',
-                    'message': 'Tu API key es inválida. Has usado tus 10 búsquedas gratuitas. Regístrate para obtener una nueva API key.',
+                    'message': 'Your API key is invalid. You have used your 10 free searches this hour. Register to get a new API key.',
                     'limit': 10,
                     'used': anonymous_count,
                     'is_anonymous': True,
@@ -73,14 +78,14 @@ def search_semantic():
             search_key = session_id
             is_anonymous = True
         else:
-            # API key válida - lógica de límites normal
+            # Valid API key - normal limits logic
             is_premium = user.get('is_premium', False)
-            limit = Config.PREMIUM_DAILY_LIMIT if is_premium else Config.FREE_DAILY_LIMIT
+            limit = Config.PREMIUM_HOURLY_LIMIT if is_premium else Config.FREE_HOURLY_LIMIT
             
-            yesterday = datetime.now() - timedelta(days=1)
+            one_hour_ago = datetime.now() - timedelta(hours=1)
             count = db.db.searches.count_documents({
                 'api_key': api_key,
-                'timestamp': {'$gt': yesterday}
+                'timestamp': {'$gt': one_hour_ago}
             })
             
             if count >= limit:
@@ -93,10 +98,10 @@ def search_semantic():
     query = data.get('query', '')
     top_k = data.get('top_k', 10)
     
-    # Procesar
+    # Process
     if len(query) > 155: return jsonify({'error': 'Query too long'}), 400
     
-    # Registrar Búsqueda
+    # Log search
     if is_anonymous:
         db.db.anonymous_searches.insert_one({
             'session_id': search_key,
@@ -118,15 +123,28 @@ def search_semantic():
         )
         vector = resp.data[0].embedding
         
-        # Usar búsqueda vectorial pura (solo embeddings)
+        # Use pure vector search (embeddings only)
         results = SearchEngine.search(vector, top_k=top_k)
+        
+        # Recalculate count after logging to get accurate remaining searches
+        if is_anonymous:
+            one_hour_ago = datetime.now() - timedelta(hours=1)
+            count = db.db.anonymous_searches.count_documents({
+                'session_id': search_key,
+                'timestamp': {'$gt': one_hour_ago}
+            })
+        else:
+            count = db.db.searches.count_documents({
+                'api_key': search_key,
+                'timestamp': {'$gt': one_hour_ago}
+            })
         
         return jsonify({
             'results': results,
-            'searches_remaining': limit - count - 1,
+            'searches_remaining': limit - count,
             'is_premium': is_premium,
             'is_anonymous': is_anonymous,
-            'search_mode': 'embeddings'  # Indicar que se usó búsqueda vectorial
+            'search_mode': 'embeddings'  # Indicate vector search was used
         })
         
     except Exception as e:

@@ -1,6 +1,6 @@
 const API_URL = window.location.origin;
 
-// Variables globales
+// Global variables
 let animesCache = [];
 let currentPage = 1;
 let totalPages = 1;
@@ -10,13 +10,13 @@ let selectedTags = [];
 let animeById = {};
 let allAvailableTags = new Set();
 
-// Cache global para todos los animes (se carga una sola vez)
+// Global cache for all animes (loaded only once)
 let allAnimesCache = null;
 let allAnimesCacheLoaded = false;
 let isTagSearchActive = false;
 
 // ========================================
-// SISTEMA DE AUTENTICACIÓN Y PAGOS
+// AUTHENTICATION AND PAYMENT SYSTEM
 // ========================================
 
 class AnimeSearchAPI {
@@ -41,7 +41,7 @@ class AnimeSearchAPI {
 
     async checkStatus() {
         if (!this.apiKey) {
-            // No hay API key - usuario anónimo
+            // No API key - anonymous user
             return null;
         }
 
@@ -51,9 +51,9 @@ class AnimeSearchAPI {
             });
 
             if (!response.ok) {
-                // Si la API key es inválida (401, 403), limpiarla
+                // If API key is invalid (401, 403), clear it
                 if (response.status === 401 || response.status === 403) {
-                    console.warn('API key inválida, limpiando localStorage...');
+                    console.warn('Invalid API key, clearing localStorage...');
                     localStorage.removeItem('anime_api_key');
                     this.apiKey = null;
                 }
@@ -62,7 +62,7 @@ class AnimeSearchAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('Error al verificar estado:', error);
+            console.error('Error checking status:', error);
             return null;
         }
     }
@@ -114,9 +114,9 @@ class AnimeSearchAPI {
         if (response.status === 429) {
             const data = await response.json();
 
-            // Si la API key es inválida y se detecta en el mensaje de error 429
+            // If API key is invalid and detected in 429 error message
             if (data.invalid_api_key) {
-                console.warn('API key inválida detectada, limpiando localStorage...');
+                console.warn('Invalid API key detected, clearing localStorage...');
                 localStorage.removeItem('anime_api_key');
                 this.apiKey = null;
             }
@@ -127,7 +127,7 @@ class AnimeSearchAPI {
 
         if (!response.ok) {
             const data = await response.json();
-            throw new Error(data.error || 'Error en la búsqueda');
+            throw new Error(data.error || 'Search error');
         }
 
         return await response.json();
@@ -156,7 +156,7 @@ class AnimeSearchAPI {
     }
 
     async createPayPalOrder() {
-        // Mostrar overlay INMEDIATAMENTE antes de cualquier otra cosa
+        // Show overlay IMMEDIATELY before anything else
         this.showPayPalLoadingOverlay();
 
         if (!this.apiKey) await this.checkStatus();
@@ -172,17 +172,17 @@ class AnimeSearchAPI {
 
             if (data.approval_url) {
                 localStorage.setItem('paypal_order_id', data.order_id);
-                // No removemos el overlay aquí porque la redirección es inmediata
+                // Don't remove overlay here because redirect is immediate
                 window.location.href = data.approval_url;
             } else {
                 this.removePayPalLoadingOverlay();
-                alert('Error: No se pudo obtener la URL de PayPal');
+                alert('Error: Could not get PayPal URL');
             }
             return data;
         } catch (error) {
-            console.error('Error al crear orden PayPal:', error);
+            console.error('Error creating PayPal order:', error);
             this.removePayPalLoadingOverlay();
-            alert('Error al conectar con PayPal. Por favor intenta de nuevo.');
+            alert('Error connecting to PayPal. Please try again.');
             throw error;
         }
     }
@@ -205,7 +205,7 @@ class AnimeSearchAPI {
         const modal = document.createElement('div');
         modal.id = 'upgrade-modal';
 
-        // Verificar si es usuario anónimo
+        // Check if anonymous user
         const isAnonymous = limitData.is_anonymous || limitData.require_register;
 
         modal.innerHTML = `
@@ -270,11 +270,11 @@ class AnimeSearchAPI {
     }
 }
 
-// Instancia global de la API
+// Global API instance
 const searchAPI = new AnimeSearchAPI();
 
 // ========================================
-// ADMINISTRADOR DE UI PARA ESTADO DE BÚSQUEDAS
+// UI MANAGER FOR SEARCH STATUS
 // ========================================
 
 class SearchUIManager {
@@ -308,11 +308,11 @@ class SearchUIManager {
                         await this.updateStatus();
                         window.history.replaceState({}, document.title, window.location.pathname);
                     } else {
-                        this.showErrorMessage('Error procesando el pago');
+                        this.showErrorMessage('Error processing payment');
                     }
                 } catch (error) {
                     console.error('Error capturando pago:', error);
-                    this.showErrorMessage('Error al procesar el pago');
+                    this.showErrorMessage('Error processing payment');
                 }
             }
         }
@@ -324,7 +324,7 @@ class SearchUIManager {
         msg.innerHTML = `
             <div class="message-content">
                 <div class="spinner"></div>
-                <p>Procesando tu pago...</p>
+                <p>Processing your payment...</p>
             </div>
         `;
         document.body.appendChild(msg);
@@ -339,9 +339,9 @@ class SearchUIManager {
         msg.innerHTML = `
             <div class="message-content">
                 <div class="success-icon">✓</div>
-                <h3>¡Pago exitoso!</h3>
-                <p>Ahora tienes acceso Premium con 1,000 búsquedas diarias</p>
-                <button onclick="this.parentElement.parentElement.remove()">Continuar</button>
+                <h3>Payment successful!</h3>
+                <p>You now have Premium access with 1,000 daily searches</p>
+                <button onclick="this.parentElement.parentElement.remove()">Continue</button>
             </div>
         `;
         document.body.appendChild(msg);
@@ -357,9 +357,9 @@ class SearchUIManager {
         msg.innerHTML = `
             <div class="message-content">
                 <div class="error-icon">✕</div>
-                <h3>Error en el pago</h3>
+                <h3>Payment error</h3>
                 <p>${message}</p>
-                <button onclick="this.parentElement.parentElement.remove()">Cerrar</button>
+                <button onclick="this.parentElement.parentElement.remove()">Close</button>
             </div>
         `;
         document.body.appendChild(msg);
@@ -370,9 +370,9 @@ class SearchUIManager {
         statusBar.id = 'search-status-bar';
         statusBar.innerHTML = `
             <div class="status-container">
-                <span id="search-count">Cargando...</span>
+                <span id="search-count">Loading...</span>
                 <button id="upgrade-button" class="btn-upgrade" style="display:none;">
-                    ⭐ Actualizar a Premium
+                    ⭐ Upgrade to Premium
                 </button>
             </div>
         `;
@@ -403,23 +403,50 @@ class SearchUIManager {
 
             if (!countSpan || !upgradeBtn || !statusContainer) return;
 
-            // Usuario anónimo (sin API key o sin status)
+            // Anonymous user (no API key or no status)
             if (!status) {
-                // Mostrar botón de login, ocultar logout
+                // Show login button, hide logout
                 if (loginBtn) loginBtn.style.display = 'block';
                 if (logoutBtn) logoutBtn.style.display = 'none';
 
-                // Obtener datos de la última búsqueda si existen
+                // Try to fetch anonymous status from server
+                try {
+                    const anonResponse = await fetch(`${this.api.baseURL}/auth/anonymous-status`);
+                    if (anonResponse.ok) {
+                        const anonStatus = await anonResponse.json();
+                        const remaining = anonStatus.remaining;
+
+                        countSpan.innerHTML = `
+                            🎁 <strong>Free Mode</strong> - 
+                            Searches remaining: <strong>${remaining}</strong>/10
+                        `;
+
+                        if (remaining <= 3) {
+                            upgradeBtn.textContent = '✨ Register';
+                            upgradeBtn.style.display = 'inline-block';
+                            upgradeBtn.onclick = () => openLoginModal();
+                            statusContainer.classList.add('low-searches');
+                        } else {
+                            upgradeBtn.style.display = 'none';
+                            statusContainer.classList.remove('low-searches');
+                        }
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error fetching anonymous status:', error);
+                }
+
+                // Fallback: Get last search data if it exists
                 const lastSearchData = window.lastSearchData;
                 if (lastSearchData && lastSearchData.is_anonymous) {
                     const remaining = lastSearchData.searches_remaining;
                     countSpan.innerHTML = `
-                        🎁 <strong>Modo Gratuito</strong> - 
-                        Búsquedas restantes: <strong>${remaining}</strong>/10
+                        🎁 <strong>Free Mode</strong> - 
+                        Searches remaining: <strong>${remaining}</strong>/10
                     `;
 
                     if (remaining <= 3) {
-                        upgradeBtn.textContent = '✨ Registrarme';
+                        upgradeBtn.textContent = '✨ Register';
                         upgradeBtn.style.display = 'inline-block';
                         upgradeBtn.onclick = () => openLoginModal();
                         statusContainer.classList.add('low-searches');
@@ -429,8 +456,8 @@ class SearchUIManager {
                     }
                 } else {
                     countSpan.innerHTML = `
-                        🎁 <strong>Modo Gratuito</strong> - 
-                        10 búsquedas sin registro
+                        🎁 <strong>Free Mode</strong> - 
+                        10 searches per hour
                     `;
                     upgradeBtn.style.display = 'none';
                     statusContainer.classList.remove('low-searches');
@@ -438,24 +465,24 @@ class SearchUIManager {
                 return;
             }
 
-            // Usuario registrado - mostrar botón de logout, ocultar login
+            // Registered user - show logout button, hide login
             if (loginBtn) loginBtn.style.display = 'none';
             if (logoutBtn) logoutBtn.style.display = 'block';
 
             if (status.is_premium) {
                 countSpan.innerHTML = `
                     💎 <strong>Premium</strong> - 
-                    Searches: <strong>${status.remaining}</strong>/${status.daily_limit}
+                    Searches: <strong>${status.remaining}</strong>/${status.hourly_limit}
                 `;
                 upgradeBtn.style.display = 'none';
                 statusContainer.classList.remove('low-searches');
             } else {
                 countSpan.innerHTML = `
-                    Resulting searches: <strong>${status.remaining}</strong>/${status.daily_limit}
+                    Remaining searches: <strong>${status.remaining}</strong>/${status.hourly_limit}
                 `;
 
                 if (status.remaining <= 3) {
-                    upgradeBtn.textContent = '⭐ Actualizar a Premium';
+                    upgradeBtn.textContent = '⭐ Upgrade to Premium';
                     upgradeBtn.style.display = 'inline-block';
                     upgradeBtn.onclick = () => this.api.createPayPalOrder();
                     statusContainer.classList.add('low-searches');
@@ -534,14 +561,14 @@ function actualizarTagsSeleccionados() {
 
     container.style.display = 'flex';
     container.innerHTML = `
-        <span class="selected-tags-label">Filtrando por:</span>
+        <span class="selected-tags-label">Filtering by:</span>
         ${selectedTags.map(tag => `
             <span class="selected-tag">
                 ${tag}
                 <button onclick="toggleTag('${tag}')" class="remove-tag">×</button>
             </span>
         `).join('')}
-        <button onclick="limpiarTags()" class="clear-tags-btn">Limpiar todo</button>
+        <button onclick="limpiarTags()" class="clear-tags-btn">Clear all</button>
     `;
 
     mostrarTagsDisponibles();
@@ -561,9 +588,9 @@ async function buscarPorTags() {
 
     isTagSearchActive = true;
 
-    // OPTIMIZACIÓN: Usar cache en lugar de cargar de nuevo
+    // OPTIMIZATION: Use cache instead of loading again
     try {
-        // Cargar cache si no existe
+        // Load cache if it doesn't exist
         if (!allAnimesCacheLoaded) {
             const response = await fetch(`${API_URL}/api/animes?per_page=99999`);
             const data = await response.json();
@@ -572,7 +599,7 @@ async function buscarPorTags() {
         }
         const todosAnimes = allAnimesCache;
 
-        // Filtrar los animes basándose en los tags seleccionados
+        // Filter animes based on selected tags
         const resultados = todosAnimes.filter(anime => {
             const animeTags = [];
             if (anime.tags && Array.isArray(anime.tags)) {
@@ -587,7 +614,7 @@ async function buscarPorTags() {
             );
         });
 
-        // Actualizar el cache con TODOS los animes, no solo los filtrados
+        // Update cache with ALL animes, not just filtered ones
         animesCache = todosAnimes;
         animeById = {};
         todosAnimes.forEach(a => { animeById[a.id] = a; });
@@ -596,7 +623,7 @@ async function buscarPorTags() {
         mostrarResultadosTags(resultados);
         return resultados;
     } catch (error) {
-        console.error('Error al cargar animes para filtrar:', error);
+        console.error('Error loading animes to filter:', error);
         return [];
     }
 }
@@ -607,8 +634,8 @@ function mostrarResultadosTags(animes) {
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('resultsSection').style.display = 'block';
 
-    document.getElementById('resultsTitle').textContent = 'Resultados por Tags';
-    document.getElementById('resultsCount').textContent = `${animes.length} anime${animes.length !== 1 ? 's' : ''} encontrado${animes.length !== 1 ? 's' : ''}`;
+    document.getElementById('resultsTitle').textContent = 'Results by Tags';
+    document.getElementById('resultsCount').textContent = `${animes.length} anime found`;
 
     animesCache = animes;
     mostrarResultados(animes, 'results');
@@ -637,7 +664,7 @@ function toggleTagsPanel() {
 }
 
 // ========================================
-// BÚSQUEDA SEMÁNTICA (ACTUALIZADA CON API)
+// SEMANTIC SEARCH (UPDATED WITH API)
 // ========================================
 
 async function buscar() {
@@ -649,7 +676,7 @@ async function buscar() {
     const MAX_CHARS = 155;
 
     if (query.length > MAX_CHARS) {
-        alert(`La descripción es demasiado larga. Por favor, limítala a un máximo de ${MAX_CHARS} caracteres para realizar la búsqueda.`);
+        alert(`The description is too long. Please limit it to a maximum of ${MAX_CHARS} characters to perform the search.`);
         return;
     }
 
@@ -667,7 +694,7 @@ async function buscar() {
     try {
         const data = await searchAPI.search(query, 18);
 
-        // Guardar datos de la búsqueda para actualizar el estado
+        // Save search data to update status
         window.lastSearchData = data;
 
         await uiManager.updateStatus();
@@ -683,8 +710,8 @@ async function buscar() {
             document.getElementById('emptyState').style.display = 'block';
         } else {
             document.getElementById('resultsSection').style.display = 'block';
-            document.getElementById('resultsTitle').textContent = 'Resultados de Búsqueda';
-            document.getElementById('resultsCount').textContent = `${animesCache.length} anime encontrado${animesCache.length !== 1 ? 's' : ''}`;
+            document.getElementById('resultsTitle').textContent = 'Search Results';
+            document.getElementById('resultsCount').textContent = `${animesCache.length} anime found`;
             mostrarResultados(animesCache, 'results');
             inicializarTags(animesCache);
         }
@@ -693,14 +720,14 @@ async function buscar() {
         document.getElementById('loading').style.display = 'none';
         let userMessage = error.message;
         if (userMessage.includes('Failed to fetch') || userMessage.includes('NetworkError')) {
-            userMessage = 'Lo sentimos, el servidor no está disponible.';
+            userMessage = 'Sorry, the server is not available.';
         }
         alert(userMessage);
     }
 }
 
 // ========================================
-// FUNCIONES DE VISUALIZACIÓN
+// DISPLAY FUNCTIONS
 // ========================================
 
 function resetearVista() {
@@ -741,7 +768,7 @@ function mostrarResultados(animes, containerId) {
 window.verDetalle = function (id) {
     const anime = animeById[id];
     if (!anime) {
-        alert("Error: No se encontró el anime seleccionado.");
+        alert("Error: Selected anime not found.");
         return;
     }
     localStorage.setItem("animeSeleccionado", JSON.stringify(anime));
@@ -768,18 +795,18 @@ async function cargarTendencias(btn, filter, page = 1) {
     if (btn) btn.classList.add('active');
 
     try {
-        // OPTIMIZACIÓN: Usar cache si ya está cargado
+        // OPTIMIZATION: Use cache if already loaded
         let animes;
         if (!allAnimesCacheLoaded) {
-            // Primera vez: cargar y cachear
+            // First time: load and cache
             const response = await fetch(`${API_URL}/api/animes?per_page=99999`);
             const data = await response.json();
             allAnimesCache = data.animes || [];
             allAnimesCacheLoaded = true;
             animes = allAnimesCache;
-            console.log('✅ Cache de animes cargado:', animes.length, 'animes');
+            console.log('✅ Anime cache loaded:', animes.length, 'animes');
         } else {
-            // Usar cache existente (INSTANTÁNEO)
+            // Use existing cache (INSTANT)
             animes = allAnimesCache;
         }
         let filtrados = [...animes];
@@ -867,7 +894,7 @@ function cambiarPagina(page) {
 }
 
 // ========================================
-// LÓGICA DE UI DE AUTENTICACIÓN
+// AUTHENTICATION UI LOGIC
 // ========================================
 
 function openLoginModal() {
@@ -970,7 +997,7 @@ window.onclick = function (event) {
 }
 
 // ========================================
-// FUNCIÓN DE LOGOUT
+// LOGOUT FUNCTION
 // ========================================
 
 function handleLogout() {
@@ -979,31 +1006,29 @@ function handleLogout() {
         localStorage.removeItem('anime_api_key');
         localStorage.removeItem('paypal_order_id');
 
-        // Actualizar la API
+        // Update API
         searchAPI.apiKey = null;
 
-        // Limpiar datos de la última búsqueda
+        // Clear last search data
         window.lastSearchData = null;
 
-        // Actualizar UI inmediatamente
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-
-        if (loginBtn) loginBtn.style.display = 'block';
-        if (logoutBtn) logoutBtn.style.display = 'none';
-
-        // Actualizar el estado
+        // Update UI status
         uiManager.updateStatus();
 
-        // Mostrar mensaje de confirmación
-        alert('Has cerrado sesión correctamente. Ahora estás en modo anónimo.');
+        // Hide results sections
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('trendingSection').style.display = 'block';
 
-        // Recargar la página para resetear todo
+        // Show confirmation message
+        alert('You have logged out successfully');
+
+        // Reload page to reset everything
         window.location.reload();
     }
 }
 
-// Event Listeners para Inputs
+// Event Listeners for Inputs
 document.getElementById('searchInput')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') buscar();
 });
@@ -1017,22 +1042,24 @@ if (tagInput) {
         }
     });
 }
-// Inicialización
+// Initialization
 window.addEventListener('DOMContentLoaded', async () => {
-    // Verificación de Magic Link
+    // Magic Link verification
     const urlParams = new URLSearchParams(window.location.search);
-    const magicKey = urlParams.get('api_key');
-    if (magicKey) {
-        localStorage.setItem('anime_api_key', magicKey);
-        searchAPI.apiKey = magicKey;
+    const apiKeyParam = urlParams.get('api_key');
+    if (apiKeyParam) {
+        localStorage.setItem('anime_api_key', apiKeyParam);
+        searchAPI.apiKey = apiKeyParam;
         window.history.replaceState({}, document.title, window.location.pathname);
-        alert("¡Inicio de sesión exitoso!");
     }
 
-    // Asegurar que el usuario esté registrado antes de continuar
+    // Ensure user is registered before continuing
+    if (!searchAPI.apiKey) { await searchAPI.register(); }
+
+    // Initialize UI Manager to show search status bar
     await uiManager.init();
 
-    // Pequeña pausa para asegurar que todo esté listo
+    // Short pause to ensure everything is ready
     await new Promise(resolve => setTimeout(resolve, 100));
 
     cargarTendencias(null, 'all');
