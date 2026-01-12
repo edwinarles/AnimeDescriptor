@@ -7,9 +7,15 @@ def send_login_email(email, api_key, host_url):
     """Send an email with the magic link/API key"""
     if not Config.SMTP_USERNAME or not Config.SMTP_PASSWORD:
         print("⚠️ SMTP not configured. Cannot send email.")
+        print(f"   SMTP_USERNAME: {'SET' if Config.SMTP_USERNAME else 'NOT SET'}")
+        print(f"   SMTP_PASSWORD: {'SET' if Config.SMTP_PASSWORD else 'NOT SET'}")
         return False
     
     try:
+        print(f"📧 Attempting to send login email to: {email}")
+        print(f"   SMTP Server: {Config.SMTP_SERVER}:{Config.SMTP_PORT}")
+        print(f"   From: {Config.EMAIL_FROM}")
+        
         msg = MIMEMultipart()
         msg['From'] = Config.EMAIL_FROM
         msg['To'] = email
@@ -37,25 +43,44 @@ def send_login_email(email, api_key, host_url):
         
         msg.attach(MIMEText(html, 'html'))
         
+        print("   Connecting to SMTP server...")
         server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT)
         server.starttls()
+        print("   Authenticating...")
         server.login(Config.SMTP_USERNAME, Config.SMTP_PASSWORD)
+        print("   Sending message...")
         server.send_message(msg)
         server.quit()
         
-        print(f"✅ Email sent to {email}")
+        print(f"✅ Login email sent successfully to {email}")
         return True
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication failed: {e}")
+        print("   Check SMTP_USERNAME and SMTP_PASSWORD")
+        return False
+    except smtplib.SMTPException as e:
+        print(f"❌ SMTP Error: {type(e).__name__} - {e}")
+        return False
     except Exception as e:
-        print(f"❌ Error sending email: {e}")
+        print(f"❌ Unexpected error sending email: {type(e).__name__} - {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def send_verification_email(email, verification_token, host_url):
     """Send a verification email to confirm the account"""
     if not Config.SMTP_USERNAME or not Config.SMTP_PASSWORD:
-        print("⚠️ SMTP not configured. Cannot send email.")
+        print("⚠️ SMTP not configured. Cannot send verification email.")
+        print(f"   SMTP_USERNAME: {'SET' if Config.SMTP_USERNAME else 'NOT SET'}")
+        print(f"   SMTP_PASSWORD: {'SET' if Config.SMTP_PASSWORD else 'NOT SET'}")
         return False
     
     try:
+        print(f"📧 Attempting to send verification email to: {email}")
+        print(f"   SMTP Server: {Config.SMTP_SERVER}:{Config.SMTP_PORT}")
+        print(f"   From: {Config.EMAIL_FROM}")
+        print(f"   Host URL: {host_url}")
+        
         msg = MIMEMultipart()
         msg['From'] = Config.EMAIL_FROM
         msg['To'] = email
@@ -64,6 +89,8 @@ def send_verification_email(email, verification_token, host_url):
         base_url = host_url.rstrip('/')
         # CORRECTION: Add /api/auth to the path
         verification_link = f"{base_url}/api/auth/verify-email?token={verification_token}"
+        
+        print(f"   Verification link: {verification_link}")
         
         html = f"""
         <html>
@@ -85,16 +112,29 @@ def send_verification_email(email, verification_token, host_url):
         
         msg.attach(MIMEText(html, 'html'))
         
+        print("   Connecting to SMTP server...")
         server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT)
         server.starttls()
+        print("   Authenticating...")
         server.login(Config.SMTP_USERNAME, Config.SMTP_PASSWORD)
+        print("   Sending message...")
         server.send_message(msg)
         server.quit()
         
-        print(f"✅ Verification email sent to {email}")
+        print(f"✅ Verification email sent successfully to {email}")
         return True
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication failed: {e}")
+        print("   Check your SMTP_USERNAME and SMTP_PASSWORD in Render environment variables")
+        print("   For Gmail: use App Password, not regular password")
+        return False
+    except smtplib.SMTPException as e:
+        print(f"❌ SMTP Error: {type(e).__name__} - {e}")
+        return False
     except Exception as e:
-        print(f"❌ Error sending verification email: {e}")
+        print(f"❌ Unexpected error sending verification email: {type(e).__name__} - {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def send_reset_password_email(email, token, host_url):

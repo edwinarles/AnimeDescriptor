@@ -51,61 +51,101 @@ def register():
 @auth_bp.route('/register-password', methods=['POST'])
 def register_password():
     """Password registration - account created ONLY after email verification"""
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-    
-    if not email or not password:
-        return jsonify({'error': 'Email and password required'}), 400
-    
-    # Check if email already has an ACTIVE account
-    existing_user = db.db.users.find_one({'email': email})
-    if existing_user:
-        print(f"⚠️ Registration attempt with existing email: {email}")
-        return jsonify({'error': 'Email already registered'}), 409
-    
-    # Check if there's already a pending registration
-    pending = db.db.pending_registrations.find_one({'email': email})
-    if pending:
-        # Pending registration already exists, resend email
-        print(f"⚠️ Existing pending registration for: {email}, resending email")
-        from services.email_service import send_verification_email
-        send_verification_email(email, pending['verification_token'], request.host_url)
-        return jsonify({
-            'message': 'A verification email has already been sent. Please check your inbox.',
-            'require_email_verification': True
-        }), 200
+    try:
+        print("\\n" + "="*50)
+        print("🔐 PASSWORD REGISTRATION ATTEMPT")
+        print("="*50)
         
-    # Generate verification token and password hash
-    hashed = generate_password_hash(password)
-    verification_token = secrets.token_urlsafe(32)
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        print(f"📧 Email: {email}")
+        print(f"🔑 Password provided: {'Yes' if password else 'No'}")
+        print(f"🌐 Host URL: {request.host_url}")
+        
+        if not email or not password:
+            print("❌ Missing email or password")
+            return jsonify({'error': 'Email and password required'}), 400
+        
+        print("\n1️⃣ Checking for existing account...")
+        # Check if email already has an ACTIVE account
+        existing_user = db.db.users.find_one({'email': email})
+        if existing_user:
+            print(f"⚠️ Registration attempt with existing email: {email}")
+            return jsonify({'error': 'Email already registered'}), 409
+        print("   ✅ No existing account found")
+        
+        print("\n2️⃣ Checking for pending registrations...")
+        # Check if there's already a pending registration
+        pending = db.db.pending_registrations.find_one({'email': email})
+        if pending:
+            # Check if token is expired
+            if pending.get('token_expires') and datetime.now() > pending['token_expires']:
+                print(f"   🧹 Cleaning expired pending registration for: {email}")
+                db.db.pending_registrations.delete_one({'_id': pending['_id']})
+                print("   ✅ Expired registration removed, proceeding with new registration")
+            else:
+                # Pending registration still valid, resend email
+                print(f"⚠️ Valid pending registration found for: {email}, resending email")
+                from services.email_service import send_verification_email
+                send_verification_email(email, pending['verification_token'], request.host_url)
+                return jsonify({
+                    'message': 'A verification email has already been sent. Please check your inbox.',
+                    'require_email_verification': True
+                }), 200
+        print("   ✅ No pending registration found")
+            
+        print("\n3️⃣ Creating new pending registration...")
+        # Generate verification token and password hash
+        hashed = generate_password_hash(password)
+        verification_token = secrets.token_urlsafe(32)
+        print(f"   Generated token: {verification_token[:20]}...")
+        
+        # Save to TEMPORARY pending registrations collection
+        # User is NOT created yet
+        db.db.pending_registrations.insert_one({
+            'email': email,
+            'password_hash': hashed,
+            'verification_token': verification_token,
+            'token_expires': datetime.now() + timedelta(hours=24),
+            'created_at': datetime.now()
+        })
+        print("   ✅ Pending registration saved to database")
+        
+        print("\n4️⃣ Sending verification email...")
+        # Send verification email
+        from services.email_service import send_verification_email
+        email_sent = send_verification_email(email, verification_token, request.host_url)
+        
+        if email_sent:
+            print(f"✅ Registration process completed successfully for: {email}")
+            print("=" * 50 + "\n")
+            return jsonify({
+                'message': 'Registration initiated. Please check your email to complete registration.',
+                'require_email_verification': True
+            }), 201
+        else:
+            # If email fails, remove pending registration
+            print("❌ Email sending failed, rolling back...")
+            db.db.pending_registrations.delete_one({'email': email})
+            print(f"⚠️ Pending registration removed: {email}")
+            print("=" * 50 + "\n")
+            return jsonify({
+                'error': 'Failed to send verification email. Please check SMTP configuration.',
+                'details': 'SMTP service not available or credentials invalid'
+            }), 500
     
-    # Save to TEMPORARY pending registrations collection
-    # User is NOT created yet
-    db.db.pending_registrations.insert_one({
-        'email': email,
-        'password_hash': hashed,
-        'verification_token': verification_token,
-        'token_expires': datetime.now() + timedelta(hours=24),
-        'created_at': datetime.now()
-    })
-    
-    # Send verification email
-    from services.email_service import send_verification_email
-    email_sent = send_verification_email(email, verification_token, request.host_url)
-    
-    if email_sent:
-        print(f"✅ Pending registration created: {email}")
+    except Exception as e:
+        print(f"\n❌ UNEXPECTED ERROR in register_password: {type(e).__name__}")
+        print(f"   Error details: {e}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 50 + "\n")
         return jsonify({
-            'message': 'Registration initiated. Please check your email to complete registration.',
-            'require_email_verification': True
-        }), 201
-    else:
-        # If email fails, remove pending registration
-        db.db.pending_registrations.delete_one({'email': email})
-        print(f"⚠️ Verification email failed, pending registration removed: {email}")
-        return jsonify({
-            'error': 'Failed to send verification email. Please try again later.'
+            'error': 'Internal server error during registration',
+            'type': type(e).__name__,
+            'details': str(e)
         }), 500
 
 

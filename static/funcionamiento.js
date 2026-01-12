@@ -1001,7 +1001,7 @@ window.onclick = function (event) {
 // ========================================
 
 function handleLogout() {
-    if (confirm('¿Estás seguro de que quieres cerrar sesión? Regresarás al modo anónimo con búsquedas limitadas.')) {
+    if (confirm('Are you sure you want to logout? You will be redirected to anonymous mode with limited searches.')) {
         // Limpiar localStorage
         localStorage.removeItem('anime_api_key');
         localStorage.removeItem('paypal_order_id');
