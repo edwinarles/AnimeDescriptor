@@ -68,31 +68,74 @@ class AnimeSearchAPI {
     }
 
     async loginPassword(email, password) {
-        const response = await fetch(`${this.baseURL}/auth/login-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        const data = await response.json();
-        if (data.api_key) {
-            this.apiKey = data.api_key;
-            localStorage.setItem('anime_api_key', data.api_key);
+        try {
+            const response = await fetch(`${this.baseURL}/auth/login-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.error('Login failed:', response.status, data);
+                return {
+                    error: data.error || `Server error (${response.status})`,
+                    status: response.status
+                };
+            }
+
+            if (data.api_key) {
+                this.apiKey = data.api_key;
+                localStorage.setItem('anime_api_key', data.api_key);
+            }
+            return data;
+        } catch (error) {
+            console.error('Network error during login:', error);
+            return {
+                error: 'Connection error',
+                details: 'Cannot connect to server. Please check your internet connection.',
+                networkError: true
+            };
         }
-        return data;
     }
 
     async registerPassword(email, password) {
-        const response = await fetch(`${this.baseURL}/auth/register-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        const data = await response.json();
-        if (data.api_key) {
-            this.apiKey = data.api_key;
-            localStorage.setItem('anime_api_key', data.api_key);
+        try {
+            const response = await fetch(`${this.baseURL}/auth/register-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            // Check if response was not OK (status 4xx or 5xx)
+            if (!response.ok) {
+                console.error('Registration failed:', response.status, data);
+                // Return data with error information for caller to handle
+                return {
+                    error: data.error || `Server error (${response.status})`,
+                    details: data.details || 'Unknown error',
+                    status: response.status
+                };
+            }
+
+            if (data.api_key) {
+                this.apiKey = data.api_key;
+                localStorage.setItem('anime_api_key', data.api_key);
+            }
+            return data;
+        } catch (error) {
+            console.error('Network error during registration:', error);
+            return {
+                error: 'Connection error',
+                details: 'Cannot connect to server. Please check your internet connection and try again.',
+                networkError: true
+            };
         }
-        return data;
     }
 
     async search(query, topK = 18) {
@@ -940,11 +983,19 @@ async function handlePasswordLogin() {
                 closeLoginModal();
                 location.reload();
             }, 1000);
+        } else if (res.error) {
+            console.error('Login error:', res);
+            status.innerHTML = `
+                ❌ <strong>Error:</strong> ${res.error}<br>
+                ${res.details ? `<small>${res.details}</small>` : ''}
+            `;
+            status.className = "status-message error-text";
         } else {
-            status.textContent = res.error || "Login failed";
+            status.textContent = "Login failed";
             status.className = "status-message error-text";
         }
     } catch (e) {
+        console.error('Exception during login:', e);
         status.textContent = "Error connecting to server";
         status.className = "status-message error-text";
     }
@@ -978,11 +1029,24 @@ async function handlePasswordRegister() {
             // Limpiar campos
             document.getElementById('regEmail').value = '';
             document.getElementById('regPassword').value = '';
+        } else if (res.error) {
+            // Enhanced error display - show backend error details
+            let errorMsg = res.error;
+            if (res.details) {
+                errorMsg += `\n${res.details}`;
+            }
+            console.error('Registration error:', res);
+            status.innerHTML = `
+                ❌ <strong>Error:</strong> ${res.error}<br>
+                ${res.details ? `<small>${res.details}</small>` : ''}
+            `;
+            status.className = "status-message error-text";
         } else {
-            status.textContent = res.error || "Registration failed";
+            status.textContent = "Registration failed - Unknown error";
             status.className = "status-message error-text";
         }
     } catch (e) {
+        console.error('Exception during registration:', e);
         status.textContent = "Error connecting to server";
         status.className = "status-message error-text";
     }
