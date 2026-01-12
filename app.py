@@ -3,6 +3,7 @@ from flask_cors import CORS
 from config import Config
 from database import db
 from search_system import SearchEngine
+import os
 
 # Blueprints (Planos de rutas)
 from routes.auth import auth_bp
@@ -11,7 +12,18 @@ from routes.search import search_bp
 
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
-CORS(app, supports_credentials=True)
+
+# CORS configuration for production (Render) and development
+# Get allowed origins from environment variable or use defaults
+allowed_origins = os.environ.get('ALLOWED_ORIGINS', '*').split(',')
+
+CORS(app, 
+     resources={r"/api/*": {"origins": allowed_origins}},
+     supports_credentials=True,
+     allow_headers=['Content-Type', 'X-API-Key', 'Authorization'],
+     expose_headers=['Content-Type'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+)
 
 # Inicialización
 db.init_db()

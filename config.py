@@ -9,6 +9,7 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev_key_secret')
     PORT = int(os.environ.get('PORT', 5000))
     ENV = os.environ.get('FLASK_ENV', 'production')
+    ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')  # For CORS
     
     # MongoDB Atlas
     # MONGO_URI format for Atlas:
