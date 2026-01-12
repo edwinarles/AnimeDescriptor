@@ -44,7 +44,9 @@ def send_login_email(email, api_key, host_url):
         msg.attach(MIMEText(html, 'html'))
         
         print("   Connecting to SMTP server...")
-        server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT)
+        # CRITICAL: Add timeout to prevent Gunicorn from killing worker
+        server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT, timeout=10)
+        print("   Starting TLS...")
         server.starttls()
         print("   Authenticating...")
         server.login(Config.SMTP_USERNAME, Config.SMTP_PASSWORD)
@@ -113,7 +115,9 @@ def send_verification_email(email, verification_token, host_url):
         msg.attach(MIMEText(html, 'html'))
         
         print("   Connecting to SMTP server...")
-        server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT)
+        # CRITICAL: Add timeout to prevent Gunicorn from killing worker
+        server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT, timeout=10)
+        print("   Starting TLS...")
         server.starttls()
         print("   Authenticating...")
         server.login(Config.SMTP_USERNAME, Config.SMTP_PASSWORD)
@@ -130,6 +134,15 @@ def send_verification_email(email, verification_token, host_url):
         return False
     except smtplib.SMTPException as e:
         print(f"❌ SMTP Error: {type(e).__name__} - {e}")
+        return False
+    except TimeoutError as e:
+        print(f"❌ SMTP Connection timeout: {e}")
+        print("   The SMTP server took too long to respond")
+        print("   This might be a firewall/network issue on Render")
+        return False
+    except OSError as e:
+        print(f"❌ Network/Socket error: {e}")
+        print("   Cannot connect to SMTP server - possible firewall block")
         return False
     except Exception as e:
         print(f"❌ Unexpected error sending verification email: {type(e).__name__} - {e}")
@@ -158,7 +171,7 @@ def send_reset_password_email(email, token, host_url):
         """
         
         msg.attach(MIMEText(html, 'html'))
-        server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT)
+        server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT, timeout=10)
         server.starttls()
         server.login(Config.SMTP_USERNAME, Config.SMTP_PASSWORD)
         server.send_message(msg)
