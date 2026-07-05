@@ -2,8 +2,7 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables (.env must be in the root directory)
-_base_dir = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(_base_dir, ".env"))
+load_dotenv()
 
 class Config:
     # Application
@@ -14,18 +13,14 @@ class Config:
     
     # MongoDB Atlas
     # MONGO_URI format for Atlas:
-
-    MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/AnimeDescriptor')
+    # mongodb+srv://<user>:<password>@<cluster>.mongodb.net/<db_name>?retryWrites=true&w=majority
+    # Example: mongodb+srv://user:password123@cluster0.xxxxx.mongodb.net/AnimeDescriptor?retryWrites=true&w=majority
+    MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://localhost:27017/AnimeDescriptor')
     DB_NAME = os.environ.get('DB_NAME', 'AnimeDescriptor')
     
     # OpenAI
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
     EMBEDDING_MODEL = "text-embedding-3-large"
-    
-    # BERT Model (Local Sentence Transformers)
-    # Se utiliza directamente "Prashasst/anime-recommendation-model" ya que su rendimiento base
-    BERT_MODEL = os.environ.get("BERT_MODEL", "Prashasst/anime-recommendation-model")
-    BERT_RERANK_THRESHOLD = float(os.environ.get("BERT_RERANK_THRESHOLD", 60.0))
     
     # PayPal
     PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID")

@@ -2,14 +2,15 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import numpy as np
 import hashlib
+from openai import OpenAI
 
 from database import db
 from search_system import SearchEngine
-from search_system.bert_helper import BERTEmbedder
 from utils import normalizar_texto, limpiar_html
 from config import Config
 
 search_bp = Blueprint('search', __name__)
+client = OpenAI(api_key=Config.OPENAI_API_KEY)
 
 @search_bp.route('/search', methods=['POST'])
 def search_semantic():
@@ -129,11 +130,14 @@ def search_semantic():
     
     # Embedding
     try:
-        # Use local BERT embedding
-        vector = BERTEmbedder.get_embedding(normalizar_texto(query))
+        resp = client.embeddings.create(
+            model=Config.EMBEDDING_MODEL,
+            input=normalizar_texto(query)
+        )
+        vector = resp.data[0].embedding
         
-        # Use pure vector search (embeddings only) and refine with BERT if match >= threshold
-        results = SearchEngine.search(vector, query_text=query, top_k=top_k)
+        # Use pure vector search (embeddings only)
+        results = SearchEngine.search(vector, top_k=top_k)
         
         # Recalculate count after logging to get accurate remaining searches
         if is_anonymous:
@@ -155,16 +159,12 @@ def search_semantic():
                 'timestamp': {'$gt': time_ago}
             })
         
-        # Detect if any results were refined with BERT
-        any_refined = any(anime.get('refined_by_bert') for anime in results)
-        search_mode = 'embeddings_with_bert_refinement' if any_refined else 'embeddings'
-        
         return jsonify({
             'results': results,
             'searches_remaining': limit - count,
             'is_premium': is_premium,
             'is_anonymous': is_anonymous,
-            'search_mode': search_mode
+            'search_mode': 'embeddings'  # Indicate vector search was used
         })
 
         

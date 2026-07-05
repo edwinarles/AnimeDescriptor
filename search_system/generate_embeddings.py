@@ -1,43 +1,26 @@
-print("DEBUG: 1. Iniciando script...")
 import os
-import sys
-
-# Desactivar CUDA/GPU para evitar que PyTorch intente inicializar la RTX 5060 y crashe el intérprete
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-print("DEBUG: 2. CUDA desactivado.")
-
-# Asegurar que el directorio raíz está en sys.path para los imports
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-print("DEBUG: 3. Importando BERTEmbedder (primero)...")
-from search_system.bert_helper import BERTEmbedder
-
 import time
 import numpy as np
-print("DEBUG: 4. Numpy cargado.")
-print("DEBUG: 5. Importando Database...")
+from openai import OpenAI
 from database import Database, db
-print("DEBUG: 6. Importando Config...")
 from config import Config
-print("DEBUG: 7. Importando Utils...")
-from utils import normalizar_texto, limpiar_descripcion
-print("DEBUG: 8. Importando tqdm...")
+from utils import normalizar_texto
 from tqdm import tqdm
-print("DEBUG: 9. Todos los imports listos.")
 
 # Inicializar conexión a DB
 Database.init_db()
 
 class EmbeddingGenerator:
     def __init__(self):
+        self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
         self.collection = db.db.animes
-        self.model = Config.BERT_MODEL
+        self.model = Config.EMBEDDING_MODEL
         
     def generate_embedding(self, text):
         """Genera embedding para un texto"""
         try:
             text = text.replace("\n", " ")
-            return BERTEmbedder.get_embedding(text)
+            return self.client.embeddings.create(input=[text], model=self.model).data[0].embedding
         except Exception as e:
             print(f"Error generando embedding: {e}")
             return None
@@ -64,30 +47,27 @@ class EmbeddingGenerator:
         pbar = tqdm(total=total_to_process)
         
         for anime in cursor:
+            # Usar enhanced_description + campos enriquecidos por LLM si existen
             text_parts = []
             
-            # Incluir títulos y sinónimos para asegurar coincidencia exacta
-            titles = []
-            main_title = anime.get('main_title')
-            if main_title:
-                titles.append(main_title)
-                
-            title_obj = anime.get('title') or {}
-            for key in ['romaji', 'english', 'native']:
-                val = title_obj.get(key)
-                if val and val not in titles:
-                    titles.append(val)
-                    
-            if titles:
-                text_parts.append("Títulos: " + ", ".join(titles))
+            # Enhanced description
+            enhanced = anime.get('enhanced_description')
+            if enhanced:
+                text_parts.append(enhanced)
             
-            # Incluir descripción limpia (sin HTML ni fuentes/ruido)
-            desc_clean = limpiar_descripcion(anime.get('description', ''))
-            if desc_clean:
-                text_parts.append(desc_clean)
-                
+            # World lore (enriquecido por LLM)
+            world_lore = anime.get('world_lore')
+            if world_lore:
+                text_parts.append(world_lore)
+            
+            # Vibe check (enriquecido por LLM)
+            vibe_check = anime.get('vibe_check')
+            if vibe_check:
+                text_parts.append(vibe_check)
+            
+            # Fallback a description básica o título si no hay campos enriquecidos
             if not text_parts:
-                text = anime.get('main_title', '')
+                text = anime.get('description') or anime.get('main_title')
             else:
                 text = ' '.join(text_parts)
             
@@ -121,9 +101,11 @@ class EmbeddingGenerator:
         """Procesa un lote de animes"""
         try:
             texts = [item['text'] for item in batch]
-            embeddings = BERTEmbedder.get_embeddings_batch(texts)
+            # OpenAI permite batches
+            response = self.client.embeddings.create(input=texts, model=self.model)
             
-            for i, embedding in enumerate(embeddings):
+            for i, data in enumerate(response.data):
+                embedding = data.embedding
                 anime_id = batch[i]['id']
                 
                 # Guardar en MongoDB
@@ -177,8 +159,12 @@ class EmbeddingGenerator:
         print(f"✅ Archivo 'embeddings.npy' guardado con {count} vectores.")
 
 def main():
+    if not Config.OPENAI_API_KEY:
+        print("❌ Error: OPENAI_API_KEY no encontrada en .env")
+        return
+        
     generator = EmbeddingGenerator()
-    # Forzar regeneración para aplicar normalización y usar el nuevo modelo BERT
+    # Forzar regeneración para aplicar normalización
     generator.process_all(force_regenerate=True)
 
 if __name__ == "__main__":

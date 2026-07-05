@@ -38,7 +38,7 @@ class SearchEngine:
             embeddings = np.load("embeddings.npy")
             
             # NORMALIZAR los embeddings para usar Inner Product como similitud coseno
-            # Los embeddings ya vienen normalizados, pero lo aseguramos
+            # Los embeddings de OpenAI ya vienen normalizados, pero lo aseguramos
             norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
             embeddings = embeddings / norms
             
@@ -62,7 +62,7 @@ class SearchEngine:
             print(f"X Error cargando motor de busqueda: {e}")
 
     @classmethod
-    def search(cls, vector, query_text=None, top_k=10, threshold=None):
+    def search(cls, vector, top_k=10):
         if not cls.index or not cls.ids:
             return []
             
@@ -113,46 +113,6 @@ class SearchEngine:
                     
                 results.append(anime)
         
-        # Refinar con BERT si hay coincidencia superior al threshold
-        if query_text and results:
-            if threshold is None:
-                threshold = getattr(Config, 'BERT_RERANK_THRESHOLD', 60.0)
-            
-            candidates = [a for a in results if a['similarity_score'] >= threshold]
-            if candidates:
-                from search_system.bert_helper import BERTEmbedder
-                from utils import limpiar_descripcion
-                
-                texts_to_embed = []
-                for anime in candidates:
-                    # Usar la descripción limpia (sin HTML ni fuentes/ruido)
-                    text_desc = limpiar_descripcion(anime.get('description', ''))
-                    
-                    text_to_compare = normalizar_texto(text_desc)
-                    if not text_to_compare:
-                        text_to_compare = normalizar_texto(anime.get('main_title', ''))
-                    
-                    texts_to_embed.append(text_to_compare)
-                
-                # Obtener embeddings en lote
-                desc_embeddings = BERTEmbedder.get_embeddings_batch(texts_to_embed)
-                
-                # Calcular similitud coseno directa con el query
-                for idx, anime in enumerate(candidates):
-                    emb = np.array(desc_embeddings[idx], dtype="float32")
-                    emb_norm = np.linalg.norm(emb)
-                    if emb_norm > 0:
-                        emb = emb / emb_norm
-                    
-                    # Calcular similitud
-                    sim = float(np.dot(vector[0], emb))
-                    new_score = sim * 100
-                    anime['similarity_score'] = new_score
-                    anime['refined_by_bert'] = True
-                
-                # Re-ordenar la lista completa de resultados basada en el nuevo score
-                results.sort(key=lambda x: x['similarity_score'], reverse=True)
-                
         return results
 
     @classmethod
