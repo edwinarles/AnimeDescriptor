@@ -1,15 +1,35 @@
-from flask import Flask, send_from_directory
-from flask_cors import CORS
-from config import Config
-from database import db
-from search_system import SearchEngine
+print("DEBUG APP: 1. Iniciando app.py...")
 import os
+# Desactivar CUDA/GPU para evitar que PyTorch intente inicializar la RTX 5060 y crashe el servidor Flask
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+print("DEBUG APP: 2. CUDA desactivado.")
+
+print("DEBUG APP: 2.5. Pre-cargando SentenceTransformer para evitar conflictos de DLL en Windows...")
+try:
+    from sentence_transformers import SentenceTransformer
+    print("DEBUG APP: 2.6. SentenceTransformer pre-cargado con éxito.")
+except ImportError:
+    print("DEBUG APP: 2.6 (Error). No se pudo pre-cargar SentenceTransformer.")
+    pass
+
+print("DEBUG APP: 3. Importando Flask...")
+from flask import Flask, send_from_directory
+print("DEBUG APP: 4. Importando CORS...")
+from flask_cors import CORS
+print("DEBUG APP: 5. Importando Config...")
+from config import Config
+print("DEBUG APP: 6. Importando database...")
+from database import db
+print("DEBUG APP: 7. Importando SearchEngine...")
+from search_system import SearchEngine
 
 # Blueprints (Planos de rutas)
+print("DEBUG APP: 8. Importando blueprints...")
 from routes.auth import auth_bp
 from routes.payment import payment_bp
 from routes.search import search_bp
 
+print("DEBUG APP: 9. Creando instancia de Flask...")
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
 

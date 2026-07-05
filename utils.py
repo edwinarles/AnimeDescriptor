@@ -22,3 +22,16 @@ def normalizar_texto(texto):
 def generate_api_key():
     """Genera una clave API única"""
     return f"ask_{secrets.token_urlsafe(32)}"
+
+def limpiar_descripcion(texto):
+    """Elimina etiquetas HTML y ruido común como (Source: ...) o creditos"""
+    texto = limpiar_html(texto)
+    # Eliminar (Source: ...) o [Source: ...] case-insensitive
+    texto = re.sub(r'\([\s\S]*?source[\s\S]*?\)', '', texto, flags=re.IGNORECASE)
+    texto = re.sub(r'\[[\s\S]*?source[\s\S]*?\]', '', texto, flags=re.IGNORECASE)
+    # Eliminar [Written by ...]
+    texto = re.sub(r'\[[\s\S]*?written[\s\S]*?\]', '', texto, flags=re.IGNORECASE)
+    # Limpiar espacios en blanco extra creados
+    texto = re.sub(r'\s+', ' ', texto)
+    return texto.strip()
+
